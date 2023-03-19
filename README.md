@@ -16,11 +16,15 @@ Create a file `secrets.json` in this directory with contents:
     "client_secret": "YOUR_APP_CLIENT_SECRET",
     "page_id": "YOUR_PAGE_ID",
     "fb_exchange_token": "YOUR_USER_ACCESS_TOKEN",
-    "app_token": "YOUR_APP_TOKEN"
+    "app_token": "YOUR_APP_TOKEN",
+    "page_name_1": {
+        "page_id": "YOUR_PAGE_ID_1"
+    },
+    "page_name_2": {
+        "page_id": "YOUR_PAGE_ID_2"
+    }
 }
 ```
-
-
 
 You can get your fb_exchange_token after login from https://developers.facebook.com/tools/explorer/. Select your app in Meta App and then select User Token -> Generate Access Token.
 
@@ -33,8 +37,9 @@ If your long_access_token has expired, just remove it from json and update fb_ex
 To create a scheduled posts timetable, create any file or modify the existing ones in `outbox` folder:
 
 ```
-YYYY-MM-DD|hh:mm:ss|Text description|Link
+page_name|YYYY-MM-DD|hh:mm:ss|Text description|Link
 ```
+where "page_name" refers to entry in your secrets file.
 
 ## Usage
 
