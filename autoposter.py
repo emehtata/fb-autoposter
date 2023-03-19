@@ -46,6 +46,7 @@ def get_page_access_token(secrets):
 def read_secrets():
     with open("secrets.json") as fp:
         secrets = json.load(fp)
+        fp.close()
 
     logging.debug(secrets)
 
@@ -117,25 +118,25 @@ def get_next_post(timetable):
     return next_post
 
 
-def convert_to_long_lived_token(secrets):
-    '''
-    curl -i -X GET "https://graph.facebook.com/{graph-api-version}/oauth/access_token?  
-        grant_type=fb_exchange_token&          
-        client_id={app-id}&
-        client_secret={app-secret}&
-        fb_exchange_token={your-access-token}"     
-    '''
-    convert_url = f"https://graph.facebook.com/16.0/oauth/access_token?grant_type=fb_exchange_token&client_id={secrets['client_id']}&client_secret={secrets['client_secret']}&fb_exchange_token={secrets['fb_exchange_token']}"
+def get_long_lived_token(secrets):
+    convert_url = f"https://graph.facebook.com/v16.0/oauth/access_token?grant_type=fb_exchange_token&client_id={secrets['client_id']}&client_secret={secrets['client_secret']}&fb_exchange_token={secrets['fb_exchange_token']}"
     try:
-        logging.debug("Converting to long lived token")
-        r = requests.get(convert_url)
-        logging.debug(r.text)
+        if not 'long_access_token' in secrets:
+            logging.debug("Converting to long lived token")
+            r = requests.get(convert_url)
+            if 'error' in json.loads(r.text):
+                logging.warning(f"Token already extended?")
+            logging.debug(r.text)
+            secrets['long_access_token'] = json.loads(r.text)['access_token']
+            return secrets
     except Exception as e:
         logging.error(r.text)
         raise e
 
-    if 'error' in json.loads(r.text):
-        logging.warning(f"Token already extended?")
+
+    
+    return secrets
+
 
 def main_loop(timetable, secrets):
     while len(timetable) > 0:
@@ -160,7 +161,10 @@ if __name__ == '__main__':
     secrets['fb_exchange_token'] = get_access_token(secrets)
     secrets['page_access_token'] = get_page_access_token(secrets)
     logging.info(secrets)
-    convert_to_long_lived_token(secrets)
+    secrets = get_long_lived_token(secrets)
+    secrets['fb_exchange_token'] = secrets['long_access_token']
+    with open("secrets.json", "w") as fp:
+        fp.write(json.dumps(secrets, indent=4))
     if len(args) == 2:
         next_post = {
             'msg': args[0],

@@ -1,2 +1,3 @@
 .venv
-secrets.json
+secrets.*
+long.sh

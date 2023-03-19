@@ -1,12 +1,16 @@
 # Scheduled posting for Facebook pages
 
+HOX! HUOM! OBS!
+
+!!!! Strongly under development !!!!
+
 ## Pre-requisites
 
 ### secrets.json file
 
 Create a file `secrets.json` in this directory with contents:
 
-```
+```json
 {
     "client_id": "YOUR_APP_CLIENT_ID",
     "client_secret": "YOUR_APP_CLIENT_SECRET",
@@ -16,6 +20,14 @@ Create a file `secrets.json` in this directory with contents:
 }
 ```
 
+
+
+You can get your fb_exchange_token after login from https://developers.facebook.com/tools/explorer/. Select your app in Meta App and then select User Token -> Generate Access Token.
+
+fb_exchange_token is used only once and long_access_token will replace it at the first run.
+If you already have a long_access_token, add "long_access_token" key-value pair to secrets.json.
+If your long_access_token has expired, just remove it from json and update fb_exchange_token.
+
 ### outbox files (timetables)
 
 To create a scheduled posts timetable, create any file or modify the existing ones in `outbox` folder:
@@ -23,3 +35,11 @@ To create a scheduled posts timetable, create any file or modify the existing on
 ```
 YYYY-MM-DD|hh:mm:ss|Text description|Link
 ```
+
+## Usage
+
+With parameters:
+
+python3 autoposter.py "Description" "http://www.example.com/link"
+
+Without parameters tries to read outbox/* timetable files and schedule posts.
