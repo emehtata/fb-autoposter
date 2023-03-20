@@ -16,7 +16,6 @@ Create a file `secrets.json` in this directory with contents:
     "client_secret": "YOUR_APP_CLIENT_SECRET",
     "page_id": "YOUR_PAGE_ID",
     "fb_exchange_token": "YOUR_USER_ACCESS_TOKEN",
-    "app_token": "YOUR_APP_TOKEN",
     "page_name_1": {
         "page_id": "YOUR_PAGE_ID_1"
     },
