@@ -16,11 +16,13 @@ Create a file `secrets.json` in this directory with contents:
     "client_secret": "YOUR_APP_CLIENT_SECRET",
     "page_id": "YOUR_PAGE_ID",
     "fb_exchange_token": "YOUR_USER_ACCESS_TOKEN",
-    "page_name_1": {
-        "page_id": "YOUR_PAGE_ID_1"
-    },
-    "page_name_2": {
-        "page_id": "YOUR_PAGE_ID_2"
+    "pages": {
+        "page_name_1": {
+            "page_id": "YOUR_PAGE_ID_1"
+        },
+        "page_name_2": {
+            "page_id": "YOUR_PAGE_ID_2"
+        }
     }
 }
 ```
@@ -30,6 +32,7 @@ You can get your fb_exchange_token after login from https://developers.facebook.
 fb_exchange_token is used only once and long_access_token will replace it at the first run.
 If you already have a long_access_token, add "long_access_token" key-value pair to secrets.json.
 If your long_access_token has expired, just remove it from json and update fb_exchange_token.
+TODO: fb_exchange_token is overwritten with long_access_token -> make them separate values
 
 ### outbox files (timetables)
 

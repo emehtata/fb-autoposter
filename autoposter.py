@@ -30,12 +30,12 @@ def get_access_token(secrets):
 
 
 def get_page_access_token_to_secrets(secrets, page):
-    page_access_url = f"https://graph.facebook.com/{secrets[page]['page_id']}?fields=access_token&access_token={secrets['fb_exchange_token']}"
-    if not 'page_access_token' in secrets[page]:
+    page_access_url = f"https://graph.facebook.com/{secrets['pages'][page]['page_id']}?fields=access_token&access_token={secrets['fb_exchange_token']}"
+    if not 'page_access_token' in secrets['pages'][page]:
         try:
             r = requests.get(page_access_url)
             data = json.loads(r.text)
-            secrets[page]['page_access_token'] = data['access_token']
+            secrets['pages'][page]['page_access_token'] = data['access_token']
             logging.debug(data)
         except Exception as e:
             logging.error(f"{r.text}, {e}")
@@ -90,9 +90,9 @@ def read_timetables(folder, secrets):
                 int(Y), int(M), int(D), int(h), int(m), int(s))
             unixtime = time.mktime(date_time.timetuple())
             if unixtime > time.time():
-                page_access_token = get_page_access_token_to_secrets(secrets, page)[page]['page_access_token']
+                page_access_token = get_page_access_token_to_secrets(secrets, page)['pages'][page]['page_access_token']
                 entry = {
-                    "page_id": secrets[page]['page_id'],
+                    "page_id": secrets['pages'][page]['page_id'],
                     "page_access_token": page_access_token,
                     "time": unixtime,
                     "msg": post_msg,
@@ -177,8 +177,8 @@ if __name__ == '__main__':
             'page': page,
             'msg': args[1],
             'link': args[2],
-            'page_id': secrets[page]['page_id'],
-            'page_access_token': secrets[page]['page_access_token']
+            'page_id': secrets['pages'][page]['page_id'],
+            'page_access_token': secrets['pages'][page]['page_access_token']
         }
         page_post(next_post)
     else:
