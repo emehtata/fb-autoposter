@@ -1,3 +1,3 @@
-sivu_a|2023-03-19|19:18:10|Asiakaspalvelun iloja|https://www.example.com/asiakas/
-sivu_h|2023-03-19|19:18:41|Näin sujuu tanssi|https://example.com/aLIoKRDF9_g
-sivu_h|2023-03-19|19:18:55|One more link|https://example.com/asdasdasd
+hassukoodari|2023-03-20|19:58:10|Asiakaspalvelun iloja|https://www.example.com/asiakas/
+hassukoodari|2023-03-26|13:48:50|Asiakaspalvelun iloja|https://www.example.com/asiakas/
+hassukoodari|2033-01-01|12:00:00|lopullinen postaus|http://www.example.com

@@ -3,6 +3,9 @@ import logging
 import sys
 import datetime
 import time
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
 from os import listdir
 from os.path import isfile, join
 
@@ -90,7 +93,8 @@ def read_timetables(folder, secrets):
                 int(Y), int(M), int(D), int(h), int(m), int(s))
             unixtime = time.mktime(date_time.timetuple())
             if unixtime > time.time():
-                page_access_token = get_page_access_token_to_secrets(secrets, page)['pages'][page]['page_access_token']
+                page_access_token = get_page_access_token_to_secrets(
+                    secrets, page)['pages'][page]['page_access_token']
                 entry = {
                     "page_id": secrets['pages'][page]['page_id'],
                     "page_access_token": page_access_token,
@@ -140,16 +144,33 @@ def get_long_lived_token(secrets):
     return secrets
 
 
-def main_loop(timetable, secrets):
+def poll_for_changes(folder, secrets):
+    while len(timetable) == 0:
+        pause = 60
+        timetable = read_timetables(folder, secrets)
+        logging.debug(f"Waiting for changes. Sleeping {pause} seconds.")
+        time.sleep(pause)
+
+    return timetable
+
+
+def main_loop(folder, secrets):
+    timetable = read_timetables(folder, secrets)
     while len(timetable) > 0:
         logging.info(f"Posts remaining: {len(timetable)}")
         next_post = get_next_post(timetable)
         pause = next_post['time']-time.time()
-        logging.debug(f"Sleeping {pause} seconds")
-        time.sleep(pause)
-        logging.debug(f"Now posting {next_post}")
-        page_post(next_post)
-        timetable = read_timetables('outbox', secrets)
+        if pause < 60:
+            logging.debug(f"Sleeping {pause} seconds")
+            time.sleep(pause)
+            logging.debug(f"Now posting {next_post}")
+            page_post(next_post)
+        else:
+            logging.debug(f"Next post in {pause} seconds")
+            time.sleep(60)
+            logging.debug(f"Now reading timetables from {folder}")
+
+        timetable = read_timetables(folder, secrets)
 
     return
 
@@ -158,9 +179,9 @@ if __name__ == '__main__':
     args = sys.argv
     args.pop(0)
     logging.debug(f"{args}")
-
+    folder = 'outbox'
     secrets = read_secrets()
-    # Get your fb_exchange_token (User Token) 
+    # Get your fb_exchange_token (User Token)
     # from https://developers.facebook.com/tools/explorer/
     secrets['fb_exchange_token'] = get_access_token(secrets)
 
@@ -182,5 +203,4 @@ if __name__ == '__main__':
         }
         page_post(next_post)
     else:
-        timetable = read_timetables('outbox', secrets)
-        main_loop(timetable, secrets)
+        main_loop(folder, secrets)

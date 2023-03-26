@@ -50,3 +50,10 @@ With parameters:
 python3 autoposter.py "Description" "http://www.example.com/link"
 
 Without parameters tries to read outbox/* timetable files and schedule posts.
+
+The main loop polls for changes in outbox/* files every 60 seconds. To keep the program running forever, add a scheduled post to somewhere far away in the future, like
+```
+page1|2033-01-01|12:00:00|the final post|http://www.example.com
+```
+
+TODO: Add watchdog to detect file changes.
