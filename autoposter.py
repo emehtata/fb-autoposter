@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import json
 import logging
 import sys
@@ -11,7 +13,7 @@ import requests
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level=logging.DEBUG,
+    level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S')
 
 
@@ -172,11 +174,23 @@ def main_loop(folder, secrets):
 
     return
 
+def usage():
+    help_text = '''
+       With parameters you can do instant post:
+       python3 autoposter.py pagename "Description" "http://www.example.com/link"
+       Without parameters tries to read outbox/* timetable files and schedule posts.
+       Check README.md for more information.
+    '''
+
+    print(help_text)
 
 if __name__ == '__main__':
     args = sys.argv
     args.pop(0)
     logging.debug(f"{args}")
+    if len(args) == 0 or args[0] == '--help' or args[0] == '-h':
+        usage()
+        sys.exit(0)
     folder = 'outbox'
     secrets = read_secrets()
     # Get your fb_exchange_token (User Token)
