@@ -43,9 +43,9 @@ where "page_name" refers to entry in your secrets file.
 
 ## Usage
 
-With parameters:
+With parameters you can do instant post:
 
-python3 autoposter.py "Description" "http://www.example.com/link"
+python3 autoposter.py pagename "Description" "http://www.example.com/link"
 
 Without parameters tries to read outbox/* timetable files and schedule posts.
 
