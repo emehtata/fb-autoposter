@@ -188,7 +188,7 @@ if __name__ == '__main__':
     args = sys.argv
     args.pop(0)
     logging.debug(f"{args}")
-    if len(args) == 0 or args[0] == '--help' or args[0] == '-h':
+    if len(args) > 0 and ( args[0] == '--help' or args[0] == '-h' ):
         usage()
         sys.exit(0)
     folder = 'outbox'
