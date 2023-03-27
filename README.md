@@ -1,12 +1,10 @@
 # Scheduled posting for Facebook pages
 
-HOX! HUOM! OBS!
-
-!!!! Strongly under development !!!!
-
 ## Pre-requisites
 
 ### secrets.json file
+
+Use FB's developer's graph explorer to get your User Token and Client ID/Secret.
 
 Create a file `secrets.json` in this directory with contents:
 
