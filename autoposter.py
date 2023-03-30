@@ -5,7 +5,8 @@ import logging
 import sys
 import datetime
 import time
-
+import requests
+# import debugpy
 from os import listdir
 from os.path import isfile, join
 
@@ -13,8 +14,37 @@ import requests
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level=logging.INFO,
+    level=logging.DEBUG,
     datefmt='%Y-%m-%d %H:%M:%S')
+
+
+class Status:
+    def __init__(self):
+        self._errors = 0
+        self._error_msgs = []
+        self._last_timetable_read_success = True
+
+    def add_error(self, msg):
+        self._error_msgs.append(msg)
+        self._errors = len(self._error_msgs)
+
+    def reset_errors(self):
+        self._error_msgs = []
+        self._errors = len(self._error_msgs)
+
+    @property
+    def errors(self):
+        return self._errors
+
+    @property
+    def error_msgs(self):
+        return self._error_msgs
+
+    def get_last_timetable_read_success(self):
+        return self._last_timetable_read_success
+
+    def set_last_timetable_read_success(self, new_state):
+        self._last_timetable_read_success = new_state
 
 
 def get_access_token(secrets):
@@ -80,32 +110,49 @@ def read_timetables(folder, secrets):
     timetable = []
     files = [f for f in listdir(folder) if isfile(join(folder, f))]
     logging.debug(files)
+    status.reset_errors()
     for f in files:
         logging.debug(f"Reading {folder}/{f}")
         with open(f"{folder}/{f}") as fp:
             lines = fp.readlines()
-
+        lnr = 0
         for l in lines:
-            page, post_date, post_time, post_msg, post_link = l.split('|')
-            Y, M, D = post_date.split('-')
-            h, m, s = post_time.split(':')
-            date_time = datetime.datetime(
-                int(Y), int(M), int(D), int(h), int(m), int(s))
-            unixtime = time.mktime(date_time.timetuple())
-            if unixtime > time.time():
-                page_access_token = get_page_access_token_to_secrets(
-                    secrets, page)['pages'][page]['page_access_token']
-                entry = {
-                    "page_id": secrets['pages'][page]['page_id'],
-                    "page_access_token": page_access_token,
-                    "time": unixtime,
-                    "msg": post_msg,
-                    "link": post_link
-                }
-                logging.debug(f"Adding: {date_time} {entry}")
-                timetable.append(entry)
-            else:
-                logging.debug(f"Old post for {page}: {date_time}")
+            lnr += 1
+            l = l.strip()
+            try:
+                page, post_date, post_time, post_msg, post_link = l.split('|')
+                Y, M, D = post_date.split('-')
+                h, m, s = post_time.split(':')
+                date_time = datetime.datetime(
+                    int(Y), int(M), int(D), int(h), int(m), int(s))
+                unixtime = time.mktime(date_time.timetuple())
+                if unixtime > time.time():
+                    page_access_token = get_page_access_token_to_secrets(
+                        secrets, page)['pages'][page]['page_access_token']
+                    entry = {
+                        "page_id": secrets['pages'][page]['page_id'],
+                        "page_access_token": page_access_token,
+                        "time": unixtime,
+                        "msg": post_msg,
+                        "link": post_link
+                    }
+                    logging.debug(f"Adding: {date_time} {entry}")
+                    timetable.append(entry)
+                else:
+                    logging.debug(f"Old post for {page}: {date_time}")
+            except Exception as e:
+                logging.error(
+                    f"Failed to parse timetable line {lnr}: {l} - {e}")
+                status.add_error(f"ERROR parsing {f}:{lnr}: {l}")
+
+    if status.errors > 0 and status.get_last_timetable_read_success() == True:
+        send_telegram_msg(
+            f"Failed to parse timetables!\n{status.error_msgs}", secrets)
+        status.set_last_timetable_read_success(False)
+    elif status.errors == 0 and status.get_last_timetable_read_success() == False:
+        send_telegram_msg(
+            f"Timetables OK!", secrets)
+        status.set_last_timetable_read_success(True)
 
     logging.debug(timetable)
 
@@ -174,6 +221,7 @@ def main_loop(folder, secrets):
 
     return
 
+
 def usage():
     help_text = '''
        With parameters you can do instant post:
@@ -184,11 +232,30 @@ def usage():
 
     print(help_text)
 
+
+def send_telegram_msg(msg, secrets):
+    if 'telegram' in secrets:
+        chatID = secrets['telegram']['chat_id']
+        apiToken = secrets['telegram']['bot_token']
+        apiURL = f'https://api.telegram.org/bot{apiToken}/sendMessage'
+        try:
+            response = requests.post(
+                apiURL, json={'chat_id': chatID, 'text': msg})
+            logging.info(response.text)
+        except Exception as e:
+            logging.error(e)
+    else:
+        logging.debug("No Telegram bot defined in secrets.")
+
+
 if __name__ == '__main__':
+    # debugpy.listen(5678)
+    # debugpy.wait_for_client()
     args = sys.argv
     args.pop(0)
+    status = Status()
     logging.debug(f"{args}")
-    if len(args) > 0 and ( args[0] == '--help' or args[0] == '-h' ):
+    if len(args) > 0 and (args[0] == '--help' or args[0] == '-h'):
         usage()
         sys.exit(0)
     folder = 'outbox'

@@ -1,3 +1,0 @@
-hassukoodari|2023-03-20|19:58:10|Asiakaspalvelun iloja|https://www.example.com/asiakas/
-hassukoodari|2023-03-26|13:48:50|Asiakaspalvelun iloja|https://www.example.com/asiakas/
-hassukoodari|2033-01-01|12:00:00|lopullinen postaus|http://www.example.com
