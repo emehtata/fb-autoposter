@@ -28,7 +28,7 @@ Create a file `secrets.json` in this directory with contents:
 }
 ```
 
-*telegram settings are optional*
+*"telegram" section is optional - just don't add it if you don't need it*
 
 You can get your fb_exchange_token after login from https://developers.facebook.com/tools/explorer/. Select your app in Meta App and then select User Token -> Generate Access Token.
 
