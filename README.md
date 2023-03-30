@@ -23,7 +23,7 @@ Create a file `secrets.json` in this directory with contents:
     },
     "telegram": {
         "chat_id": "TELEGRAM_CHAT_ID_NR",
-        "bot_token: "TELEGRAM_BOT_TOKEN"
+        "bot_token": "TELEGRAM_BOT_TOKEN"
     }
 }
 ```
