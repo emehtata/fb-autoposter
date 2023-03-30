@@ -20,9 +20,15 @@ Create a file `secrets.json` in this directory with contents:
         "page_name_2": {
             "page_id": "YOUR_PAGE_ID_2"
         }
+    },
+    "telegram": {
+        "chat_id": "TELEGRAM_CHAT_ID_NR",
+        "bot_token: "TELEGRAM_BOT_TOKEN"
     }
 }
 ```
+
+*telegram settings are optional*
 
 You can get your fb_exchange_token after login from https://developers.facebook.com/tools/explorer/. Select your app in Meta App and then select User Token -> Generate Access Token.
 
