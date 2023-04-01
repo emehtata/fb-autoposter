@@ -14,7 +14,7 @@ import requests
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level=logging.DEBUG,
+    level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S')
 
 
@@ -80,8 +80,8 @@ def get_page_access_token_to_secrets(secrets, page):
 def read_secrets():
     with open("secrets.json") as fp:
         secrets = json.load(fp)
+        logging.info("Secrets read")
         fp.close()
-
     logging.debug(secrets)
 
     return secrets
@@ -213,10 +213,10 @@ def main_loop(folder, secrets):
             logging.debug(f"Now posting {next_post}")
             page_post(next_post)
         else:
-            logging.debug(f"Next post in {pause} seconds")
+            logging.info(f"Next post in {pause} seconds")
             time.sleep(60)
-            logging.debug(f"Now reading timetables from {folder}")
 
+        logging.debug(f"Now reading timetables from {folder}")
         timetable = read_timetables(folder, secrets)
 
     return
@@ -264,7 +264,7 @@ if __name__ == '__main__':
     # from https://developers.facebook.com/tools/explorer/
     secrets['fb_exchange_token'] = get_access_token(secrets)
 
-    logging.info(secrets)
+    logging.debug(secrets)
     secrets = get_long_lived_token(secrets)
     secrets['fb_exchange_token'] = secrets['long_access_token']
     with open("secrets.json", "w") as fp:
