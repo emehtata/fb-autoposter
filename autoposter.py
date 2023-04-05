@@ -56,7 +56,7 @@ def get_access_token(secrets):
         access_token = data['access_token']
         logging.debug(data)
     except Exception as e:
-        logging.error(f"{r.text}, {e}")
+        my_error(f"{r.text}, {e}")
         raise e
 
     return access_token
@@ -71,7 +71,7 @@ def get_page_access_token_to_secrets(secrets, page):
             secrets['pages'][page]['page_access_token'] = data['access_token']
             logging.debug(data)
         except Exception as e:
-            logging.error(f"{r.text}, {e}")
+            my_error(f"{r.text}, {e}")
             raise e
 
     return secrets
@@ -102,7 +102,7 @@ def page_post(msg):
         r = requests.post(post_url, data=payload)
         logging.info(r.text)
     except Exception as e:
-        logging.error(f"{r.text}, {e}")
+        my_error(f"{r.text}, {e}")
         raise e
 
 
@@ -158,7 +158,6 @@ def read_timetables(folder, secrets):
 
     return timetable
 
-
 def get_next_post(timetable):
     next_post = None
     timenow = time.time()
@@ -172,10 +171,15 @@ def get_next_post(timetable):
         f"Next post at {datetime.datetime.fromtimestamp(next_post['time'])}: {next_post}")
     return next_post
 
+def my_error(msg):
+    logging.error(msg)
+    send_telegram_msg(
+        f"ERROR {msg}", secrets)
 
 def get_long_lived_token(secrets):
-    convert_url = f"https://graph.facebook.com/v16.0/oauth/access_token?grant_type=fb_exchange_token&client_id={secrets['client_id']}&client_secret={secrets['client_secret']}&fb_exchange_token={secrets['fb_exchange_token']}"
     try:
+        convert_url = f"https://graph.facebook.com/v16.0/oauth/access_token?grant_type=fb_exchange_token&client_id={secrets['client_id']}&client_secret={secrets['client_secret']}&fb_exchange_token={secrets['fb_exchange_token']}"
+
         if not 'long_access_token' in secrets:
             logging.debug("Converting to long lived token")
             r = requests.get(convert_url)
@@ -183,22 +187,11 @@ def get_long_lived_token(secrets):
                 logging.warning(f"Token already extended?")
             logging.debug(r.text)
             secrets['long_access_token'] = json.loads(r.text)['access_token']
-            return secrets
     except Exception as e:
-        logging.error(r.text)
+        my_error(r.text)
         raise e
 
     return secrets
-
-
-def poll_for_changes(folder, secrets):
-    while len(timetable) == 0:
-        pause = 60
-        timetable = read_timetables(folder, secrets)
-        logging.debug(f"Waiting for changes. Sleeping {pause} seconds.")
-        time.sleep(pause)
-
-    return timetable
 
 
 def main_loop(folder, secrets):
