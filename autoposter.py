@@ -52,45 +52,72 @@ class Status:
         self._last_timetable_read_success = new_state
 
 
-def get_access_token(secrets):
-    access_token_url = f"https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id={secrets['client_id']}&client_secret={secrets['client_secret']}&fb_exchange_token={secrets['fb_exchange_token']}"
+class Secrets:
+    def __init__(self, secrets_file):
+        with open(secrets_file) as fp:
+            data = json.load(fp)
+            logging.info("Secrets read")
+            self._client_id = data['client_id']
+            self._client_secret = data['client_secret']
+            self._fb_exchange_token = data['fb_exchange_token']
+            self._pages = data['pages']
+            self._telegram = False
+            if 'telegram' in data:
+                self._telegram_chat_id = data['telegram']['chat_id']
+                self._telegram_bot_token = data['telegram']['bot_token']
+                self._telegram = True
+            self.get_access_token()
 
-    try:
-        r = requests.get(access_token_url)
-        data = json.loads(r.text)
-        access_token = data['access_token']
-        logging.debug(data)
-    except Exception as e:
-        my_error(f"{r.text}, {e}")
-        raise e
+    @property
+    def telegram_chat_id(self):
+        return self._telegram_chat_id
+    
+    @property
+    def telegram_bot_token(self):
+        return self._telegram_bot_token
 
-    return access_token
+    @property
+    def telegram(self):
+        return self._telegram
 
+    def get_access_token(self):
+        access_token_url = f"https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id={self._client_id}&client_secret={self._client_secret}&fb_exchange_token={secrets['fb_exchange_token']}"
 
-def get_page_access_token_to_secrets(secrets, page):
-    if not 'page_access_token' in secrets['pages'][page]:
-        page_access_url = f"https://graph.facebook.com/{secrets['pages'][page]['page_id']}?fields=access_token&access_token={secrets['fb_exchange_token']}"
         try:
-            r = requests.get(page_access_url)
+            r = requests.get(access_token_url)
             data = json.loads(r.text)
-            secrets['pages'][page]['page_access_token'] = data['access_token']
+            self._access_token = data['access_token']
             logging.debug(data)
         except Exception as e:
             my_error(f"{r.text}, {e}")
             raise e
 
-    return secrets
+    def get_page_access_token(self, page):
+        if not 'page_access_token' in self._pages[page]:
+            page_access_url = f"https://graph.facebook.com/{self._pages[page]['page_id']}?fields=access_token&access_token={self._fb_exchange_token}"
+            try:
+                r = requests.get(page_access_url)
+                data = json.loads(r.text)
+                self._pages[page]['page_access_token'] = data['access_token']
+                logging.debug(data)
+            except Exception as e:
+                my_error(f"{r.text}, {e}")
+                raise e
 
+    def get_long_lived_token(self):
+        try:
+            convert_url = f"https://graph.facebook.com/v16.0/oauth/access_token?grant_type=fb_exchange_token&client_id={self._client_id}&client_secret={self._client_secret}&fb_exchange_token={self._fb_exchange_token}"
 
-def read_secrets():
-    with open("secrets.json") as fp:
-        secrets = json.load(fp)
-        logging.info("Secrets read")
-        fp.close()
-    logging.debug(secrets)
-
-    return secrets
-
+            if not 'long_access_token' in secrets:
+                logging.debug("Converting to long lived token")
+                r = requests.get(convert_url)
+                if 'error' in json.loads(r.text):
+                    logging.warning(f"Token already extended?")
+                logging.debug(r.text)
+                self._long_access_token = json.loads(r.text)['access_token']
+        except Exception as e:
+            my_error(r.text)
+            raise e
 
 def page_post(msg):
     page_id = msg['page_id']
@@ -137,11 +164,9 @@ def read_timetables(folder, secrets):
                     int(Y), int(M), int(D), int(h), int(m), int(s))
                 unixtime = time.mktime(date_time.timetuple())
                 if unixtime > time.time():
-                    page_access_token = get_page_access_token_to_secrets(
-                        secrets, page)['pages'][page]['page_access_token']
                     entry = {
-                        "page_id": secrets['pages'][page]['page_id'],
-                        "page_access_token": page_access_token,
+                        "page_id": secrets.pages[page]['page_id'],
+                        "page_access_token": secrets.page_access_token(page),
                         "time": unixtime,
                         "msg": post_msg,
                         "link": post_link
@@ -191,22 +216,6 @@ def my_error(msg):
         f"ERROR {msg}", secrets)
 
 
-def get_long_lived_token(secrets):
-    try:
-        convert_url = f"https://graph.facebook.com/v16.0/oauth/access_token?grant_type=fb_exchange_token&client_id={secrets['client_id']}&client_secret={secrets['client_secret']}&fb_exchange_token={secrets['fb_exchange_token']}"
-
-        if not 'long_access_token' in secrets:
-            logging.debug("Converting to long lived token")
-            r = requests.get(convert_url)
-            if 'error' in json.loads(r.text):
-                logging.warning(f"Token already extended?")
-            logging.debug(r.text)
-            secrets['long_access_token'] = json.loads(r.text)['access_token']
-    except Exception as e:
-        my_error(r.text)
-        raise e
-
-    return secrets
 
 
 def main_loop(folder, secrets):
@@ -242,9 +251,9 @@ def usage():
 
 
 def send_telegram_msg(msg, secrets):
-    if 'telegram' in secrets:
-        chatID = secrets['telegram']['chat_id']
-        apiToken = secrets['telegram']['bot_token']
+    if secrets.telegram:
+        chatID = secrets.telegram_chat_id
+        apiToken = secrets.telegram_bot_token
         apiURL = f'https://api.telegram.org/bot{apiToken}/sendMessage'
         try:
             response = requests.post(
