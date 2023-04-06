@@ -7,6 +7,8 @@ import datetime
 import time
 import requests
 # import debugpy
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 from os import listdir
 from os.path import isfile, join
 
@@ -20,30 +22,30 @@ logging.basicConfig(
 
 class Status:
     def __init__(self):
-        self._errors = 0
         self._error_msgs = []
+        self.reset_errors()
         self._last_timetable_read_success = True
 
     def add_error(self, msg):
         self._error_msgs.append(msg)
-        self._errors = len(self._error_msgs)
 
     def reset_errors(self):
-        self._error_msgs = []
-        self._errors = len(self._error_msgs)
+        self._error_msgs.clear()
 
     @property
     def errors(self):
-        return self._errors
+        return len(self._error_msgs)
 
     @property
     def error_msgs(self):
         return self._error_msgs
 
-    def get_last_timetable_read_success(self):
+    @property
+    def last_timetable_read_success(self):
         return self._last_timetable_read_success
 
-    def set_last_timetable_read_success(self, new_state):
+    @last_timetable_read_success.setter
+    def last_timetable_read_success(self, new_state):
         self._last_timetable_read_success = new_state
 
 
@@ -63,8 +65,8 @@ def get_access_token(secrets):
 
 
 def get_page_access_token_to_secrets(secrets, page):
-    page_access_url = f"https://graph.facebook.com/{secrets['pages'][page]['page_id']}?fields=access_token&access_token={secrets['fb_exchange_token']}"
     if not 'page_access_token' in secrets['pages'][page]:
+        page_access_url = f"https://graph.facebook.com/{secrets['pages'][page]['page_id']}?fields=access_token&access_token={secrets['fb_exchange_token']}"
         try:
             r = requests.get(page_access_url)
             data = json.loads(r.text)
@@ -145,18 +147,19 @@ def read_timetables(folder, secrets):
                     f"Failed to parse timetable line {lnr}: {l} - {e}")
                 status.add_error(f"ERROR parsing {f}:{lnr}: {l}")
 
-    if status.errors > 0 and status.get_last_timetable_read_success() == True:
+    if status.errors > 0 and status.last_timetable_read_success == True:
         send_telegram_msg(
             f"Failed to parse timetables!\n{status.error_msgs}", secrets)
-        status.set_last_timetable_read_success(False)
-    elif status.errors == 0 and status.get_last_timetable_read_success() == False:
+        status.last_timetable_read_success = False
+    elif status.errors == 0 and status.last_timetable_read_success == False:
         send_telegram_msg(
             f"Timetables OK!", secrets)
-        status.set_last_timetable_read_success(True)
+        status.last_timetable_read_success = True
 
     logging.debug(timetable)
 
     return timetable
+
 
 def get_next_post(timetable):
     next_post = None
@@ -171,10 +174,12 @@ def get_next_post(timetable):
         f"Next post at {datetime.datetime.fromtimestamp(next_post['time'])}: {next_post}")
     return next_post
 
+
 def my_error(msg):
     logging.error(msg)
     send_telegram_msg(
         f"ERROR {msg}", secrets)
+
 
 def get_long_lived_token(secrets):
     try:
