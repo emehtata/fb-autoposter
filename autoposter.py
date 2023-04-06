@@ -6,17 +6,20 @@ import sys
 import datetime
 import time
 import requests
-# import debugpy
+from os import environ
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from os import listdir
 from os.path import isfile, join
 
-import requests
+logging_level = logging.INFO
+if 'DEBUG' in environ:
+    import debugpy
+    logging_level = logging.DEBUG
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level=logging.INFO,
+    level=logging_level,
     datefmt='%Y-%m-%d %H:%M:%S')
 
 
@@ -117,6 +120,11 @@ def read_timetables(folder, secrets):
         logging.debug(f"Reading {folder}/{f}")
         with open(f"{folder}/{f}") as fp:
             lines = fp.readlines()
+
+        if len(lines) == 0:
+            logging.warning(f"No lines found in {folder}/{f}")
+            continue
+
         lnr = 0
         for l in lines:
             lnr += 1
@@ -155,6 +163,8 @@ def read_timetables(folder, secrets):
         send_telegram_msg(
             f"Timetables OK!", secrets)
         status.last_timetable_read_success = True
+
+    timetable = sorted(timetable, key=lambda d: d['time'])
 
     logging.debug(timetable)
 
@@ -247,8 +257,9 @@ def send_telegram_msg(msg, secrets):
 
 
 if __name__ == '__main__':
-    # debugpy.listen(5678)
-    # debugpy.wait_for_client()
+    if 'DEBUG' in environ:
+        debugpy.listen(5678)
+        debugpy.wait_for_client()
     args = sys.argv
     args.pop(0)
     status = Status()
