@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 
+import datetime
 import json
 import logging
 import sys
-import datetime
 import time
-import requests
-from os import environ
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-from os import listdir
+from os import environ, listdir
 from os.path import isfile, join
+
+import requests
 
 logging_level = logging.INFO
 if 'DEBUG' in environ:
@@ -79,7 +77,6 @@ class Secrets:
             self.save_secrets()
             for p in self._pages:
                 self._pages[p]['page_access_token'] = self.page_access_token(p)
-
 
     def save_secrets(self):
         with open(self._secrets_file, "w") as fp:
@@ -240,7 +237,8 @@ def my_error(msg):
     logging.error(msg)
     if 'DEBUG' in environ:
         send_telegram_msg(
-            f"ERROR {msg}", secrets)        
+            f"ERROR {msg}", secrets)
+
 
 def main_loop(folder, secrets):
     timetable = read_timetables(folder, secrets)
@@ -302,15 +300,6 @@ if __name__ == '__main__':
         sys.exit(0)
     folder = 'outbox'
     secrets = Secrets("secrets.json")
-    # Get your fb_exchange_token (User Token)
-    # from https://developers.facebook.com/tools/explorer/
-    # secrets['fb_exchange_token'] = get_access_token(secrets)
-
-    # logging.debug(secrets)
-    # secrets = get_long_lived_token(secrets)
-    # secrets['fb_exchange_token'] = secrets['long_access_token']
-    # with open("secrets.json", "w") as fp:
-    #    fp.write(json.dumps(secrets, indent=4))
 
     if len(args) == 3:
         page = args[0]
