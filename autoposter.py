@@ -18,7 +18,7 @@ if 'DEBUG' in environ:
     logging_level = logging.DEBUG
 
 logging.basicConfig(
-    format='%(asctime)s %(levelname)-8s %(message)s',
+    format='[%(filename)s:%(lineno)s - %(funcName)20s() ] %(asctime)s %(levelname)-8s %(message)s',
     level=logging_level,
     datefmt='%Y-%m-%d %H:%M:%S')
 
@@ -55,23 +55,44 @@ class Status:
 class Secrets:
     def __init__(self, secrets_file):
         with open(secrets_file) as fp:
-            data = json.load(fp)
+            self._data = json.load(fp)
             logging.info("Secrets read")
-            self._client_id = data['client_id']
-            self._client_secret = data['client_secret']
-            self._fb_exchange_token = data['fb_exchange_token']
-            self._pages = data['pages']
+            self._secrets_file = secrets_file
+            self._client_id = self._data['client_id']
+            self._client_secret = self._data['client_secret']
+            self._fb_exchange_token = self._data['fb_exchange_token']
+            self._pages = self._data['pages']
             self._telegram = False
-            if 'telegram' in data:
-                self._telegram_chat_id = data['telegram']['chat_id']
-                self._telegram_bot_token = data['telegram']['bot_token']
+            if 'telegram' in self._data:
+                self._telegram_chat_id = self._data['telegram']['chat_id']
+                self._telegram_bot_token = self._data['telegram']['bot_token']
                 self._telegram = True
             self.get_access_token()
+            if not 'long_access_token' in self._data:
+                logging.debug("Need to fetch long_access_token")
+                self._data['long_access_token'] = self.get_long_access_token()
+                self._data['fb_exchange_token'] = self._long_access_token
+                self._fb_exchange_token = self._long_access_token
+            else:
+                self._long_access_token = self._data['long_access_token']
+                self._fb_exchange_token = self._long_access_token
+            self.save_secrets()
+            for p in self._pages:
+                self._pages[p] = self.page_access_token(p)
+
+
+    def save_secrets(self):
+        with open(self._secrets_file, "w") as fp:
+            fp.write(json.dumps(self._data, indent=4))
+
+    @property
+    def pages(self):
+        return self._pages
 
     @property
     def telegram_chat_id(self):
         return self._telegram_chat_id
-    
+
     @property
     def telegram_bot_token(self):
         return self._telegram_bot_token
@@ -81,7 +102,7 @@ class Secrets:
         return self._telegram
 
     def get_access_token(self):
-        access_token_url = f"https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id={self._client_id}&client_secret={self._client_secret}&fb_exchange_token={secrets['fb_exchange_token']}"
+        access_token_url = f"https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id={self._client_id}&client_secret={self._client_secret}&fb_exchange_token={self._fb_exchange_token}"
 
         try:
             r = requests.get(access_token_url)
@@ -92,7 +113,7 @@ class Secrets:
             my_error(f"{r.text}, {e}")
             raise e
 
-    def get_page_access_token(self, page):
+    def page_access_token(self, page):
         if not 'page_access_token' in self._pages[page]:
             page_access_url = f"https://graph.facebook.com/{self._pages[page]['page_id']}?fields=access_token&access_token={self._fb_exchange_token}"
             try:
@@ -104,20 +125,22 @@ class Secrets:
                 my_error(f"{r.text}, {e}")
                 raise e
 
-    def get_long_lived_token(self):
-        try:
-            convert_url = f"https://graph.facebook.com/v16.0/oauth/access_token?grant_type=fb_exchange_token&client_id={self._client_id}&client_secret={self._client_secret}&fb_exchange_token={self._fb_exchange_token}"
+    def get_long_access_token(self):
+        convert_url = f"https://graph.facebook.com/v16.0/oauth/access_token?grant_type=fb_exchange_token&client_id={self._client_id}&client_secret={self._client_secret}&fb_exchange_token={self._fb_exchange_token}"
 
-            if not 'long_access_token' in secrets:
-                logging.debug("Converting to long lived token")
-                r = requests.get(convert_url)
-                if 'error' in json.loads(r.text):
-                    logging.warning(f"Token already extended?")
-                logging.debug(r.text)
-                self._long_access_token = json.loads(r.text)['access_token']
+        try:
+            logging.debug("Converting to long lived token")
+            r = requests.get(convert_url)
+            if 'error' in json.loads(r.text):
+                logging.warning(f"Token already extended?")
+            logging.debug(r.text)
+            self._long_access_token = json.loads(r.text)['access_token']
         except Exception as e:
             my_error(r.text)
             raise e
+
+        return self._long_access_token
+
 
 def page_post(msg):
     page_id = msg['page_id']
@@ -212,11 +235,9 @@ def get_next_post(timetable):
 
 def my_error(msg):
     logging.error(msg)
-    send_telegram_msg(
-        f"ERROR {msg}", secrets)
-
-
-
+    #if 'DEBUG' in environ:
+    #    send_telegram_msg(
+    #        f"ERROR {msg}", secrets)        
 
 def main_loop(folder, secrets):
     timetable = read_timetables(folder, secrets)
@@ -227,10 +248,10 @@ def main_loop(folder, secrets):
         if pause < 60:
             logging.debug(f"Sleeping {pause} seconds")
             time.sleep(pause)
-            logging.debug(f"Now posting {next_post}")
+            logging.info(f"Now posting {next_post}")
             page_post(next_post)
         else:
-            logging.info(f"Next post in {pause} seconds")
+            logging.debug(f"Next post in {pause} seconds")
             time.sleep(60)
 
         logging.debug(f"Now reading timetables from {folder}")
@@ -277,26 +298,25 @@ if __name__ == '__main__':
         usage()
         sys.exit(0)
     folder = 'outbox'
-    secrets = read_secrets()
+    secrets = Secrets("secrets.json")
     # Get your fb_exchange_token (User Token)
     # from https://developers.facebook.com/tools/explorer/
-    secrets['fb_exchange_token'] = get_access_token(secrets)
+    # secrets['fb_exchange_token'] = get_access_token(secrets)
 
     logging.debug(secrets)
-    secrets = get_long_lived_token(secrets)
-    secrets['fb_exchange_token'] = secrets['long_access_token']
-    with open("secrets.json", "w") as fp:
-        fp.write(json.dumps(secrets, indent=4))
+    # secrets = get_long_lived_token(secrets)
+    # secrets['fb_exchange_token'] = secrets['long_access_token']
+    # with open("secrets.json", "w") as fp:
+    #    fp.write(json.dumps(secrets, indent=4))
 
     if len(args) == 3:
         page = args[0]
-        secrets = get_page_access_token_to_secrets(secrets, page)
         next_post = {
             'page': page,
             'msg': args[1],
             'link': args[2],
-            'page_id': secrets['pages'][page]['page_id'],
-            'page_access_token': secrets['pages'][page]['page_access_token']
+            'page_id': secrets.pages[page]['page_id'],
+            'page_access_token': secrets.pages[page]['page_access_token']
         }
         page_post(next_post)
     else:
