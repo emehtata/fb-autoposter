@@ -78,7 +78,7 @@ class Secrets:
                 self._fb_exchange_token = self._long_access_token
             self.save_secrets()
             for p in self._pages:
-                self._pages[p] = self.page_access_token(p)
+                self._pages[p]['page_access_token'] = self.page_access_token(p)
 
 
     def save_secrets(self):
@@ -124,6 +124,8 @@ class Secrets:
             except Exception as e:
                 my_error(f"{r.text}, {e}")
                 raise e
+
+        return self._pages[page]['page_access_token']
 
     def get_long_access_token(self):
         convert_url = f"https://graph.facebook.com/v16.0/oauth/access_token?grant_type=fb_exchange_token&client_id={self._client_id}&client_secret={self._client_secret}&fb_exchange_token={self._fb_exchange_token}"
@@ -203,14 +205,15 @@ def read_timetables(folder, secrets):
                     f"Failed to parse timetable line {lnr}: {l} - {e}")
                 status.add_error(f"ERROR parsing {f}:{lnr}: {l}")
 
-    if status.errors > 0 and status.last_timetable_read_success == True:
-        send_telegram_msg(
-            f"Failed to parse timetables!\n{status.error_msgs}", secrets)
-        status.last_timetable_read_success = False
-    elif status.errors == 0 and status.last_timetable_read_success == False:
-        send_telegram_msg(
-            f"Timetables OK!", secrets)
-        status.last_timetable_read_success = True
+    if not 'DEBUG' in environ:
+        if status.errors > 0 and status.last_timetable_read_success == True:
+            send_telegram_msg(
+                f"Failed to parse timetables!\n{status.error_msgs}", secrets)
+            status.last_timetable_read_success = False
+        elif status.errors == 0 and status.last_timetable_read_success == False:
+            send_telegram_msg(
+                f"Timetables OK!", secrets)
+            status.last_timetable_read_success = True
 
     timetable = sorted(timetable, key=lambda d: d['time'])
 
@@ -235,9 +238,9 @@ def get_next_post(timetable):
 
 def my_error(msg):
     logging.error(msg)
-    #if 'DEBUG' in environ:
-    #    send_telegram_msg(
-    #        f"ERROR {msg}", secrets)        
+    if 'DEBUG' in environ:
+        send_telegram_msg(
+            f"ERROR {msg}", secrets)        
 
 def main_loop(folder, secrets):
     timetable = read_timetables(folder, secrets)
@@ -303,7 +306,7 @@ if __name__ == '__main__':
     # from https://developers.facebook.com/tools/explorer/
     # secrets['fb_exchange_token'] = get_access_token(secrets)
 
-    logging.debug(secrets)
+    # logging.debug(secrets)
     # secrets = get_long_lived_token(secrets)
     # secrets['fb_exchange_token'] = secrets['long_access_token']
     # with open("secrets.json", "w") as fp:
