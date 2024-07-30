@@ -129,7 +129,7 @@ def read_timetables(folder, secrets):
             l = l.strip()
             logging.debug(f"{l} ({len(l)})")
             if len(l) == 0:
-                continue
+                status.add_error(f"Empty line {f}:{lnr}")
             try:
                 page, post_date, post_time, post_msg, post_link = l.split('|')
                 Y, M, D = post_date.split('-')
