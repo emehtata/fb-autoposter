@@ -10,7 +10,7 @@ from os import environ
 from os import listdir
 from os.path import isfile, join
 
-logging_level = logging.DEBUG
+logging_level = logging.INFO
 if 'DEBUG' in environ:
     import debugpy
     logging_level = logging.DEBUG
