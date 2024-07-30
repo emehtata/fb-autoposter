@@ -7,18 +7,16 @@ import datetime
 import time
 import requests
 from os import environ
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
 from os import listdir
 from os.path import isfile, join
 
-logging_level = logging.INFO
+logging_level = logging.DEBUG
 if 'DEBUG' in environ:
     import debugpy
     logging_level = logging.DEBUG
 
 logging.basicConfig(
-    format='%(asctime)s %(levelname)-8s %(message)s',
+    format='%(asctime)s %(levelname)-8s %(message)s (%(module)s:%(funcName)s:%(lineno)d) ',
     level=logging_level,
     datefmt='%Y-%m-%d %H:%M:%S')
 
@@ -129,6 +127,9 @@ def read_timetables(folder, secrets):
         for l in lines:
             lnr += 1
             l = l.strip()
+            logging.debug(f"{l} ({len(l)})")
+            if len(l) == 0:
+                continue
             try:
                 page, post_date, post_time, post_msg, post_link = l.split('|')
                 Y, M, D = post_date.split('-')
